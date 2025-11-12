@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { redirect } from 'next/navigation';
 import axios, { isAxiosError } from 'axios';
 import { setCookie } from 'cookies-next';
 
@@ -10,6 +9,10 @@ export async function GET(request: NextRequest) {
 
   if (!code) {
     return new Response('Code not found', { status: 400 });
+  }
+
+  if (!githubClientId || !githubClientSecret) {
+    return new Response('GitHub OAuth not configured', { status: 500 });
   }
 
   let accessToken;
@@ -46,10 +49,15 @@ export async function GET(request: NextRequest) {
 
   // Redirect logic is now outside the try...catch block
   const response = NextResponse.redirect(new URL('/', request.url));
+  // Set cookie with secure options
   setCookie('access_token', accessToken, {
     req: request,
     res: response,
     maxAge: 60 * 60 * 24, // 1 day
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
   });
 
   return response;

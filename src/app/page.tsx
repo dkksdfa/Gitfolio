@@ -23,7 +23,7 @@ export default function LandingPage() {
 
   const handleStartClick = () => {
     if (isLoggedIn) {
-      router.push('/analysis');
+      router.push('/templates');
     } else {
       setShowLoginModal(true);
     }
@@ -37,7 +37,7 @@ export default function LandingPage() {
   return (
     <>
       {/* Hero Section with Background */}
-      <section 
+      <section
         className="w-full h-[550px] flex flex-col justify-center text-white relative"
         style={{ backgroundImage: 'linear-gradient(to right, rgba(76, 29, 149, 0.8), rgba(59, 130, 246, 0.8))', backgroundSize: 'cover', backgroundPosition: 'center' }}
       >
@@ -49,7 +49,7 @@ export default function LandingPage() {
             <p className="text-lg md:text-xl text-gray-200 mb-8">
               AI가 깃허브 저장소를 분석하여 몇 분 만에 인상적인 포트폴리오를 만들어 드립니다.
             </p>
-            <button 
+            <button
               onClick={handleStartClick}
               className="inline-block px-8 py-4 text-lg font-bold text-white bg-purple-700 rounded-lg hover:bg-purple-800 shadow-lg transition-transform transform hover:scale-105"
             >
@@ -86,14 +86,14 @@ export default function LandingPage() {
             <h3 className="text-xl font-semibold text-gray-900 mb-4">로그인 필요</h3>
             <p className="text-gray-600 mb-6">이 서비스는 로그인이 필요합니다. GitHub 계정으로 로그인하시겠습니까?</p>
             <div className="flex justify-center space-x-4">
-              <button 
-                onClick={() => setShowLoginModal(false)} 
+              <button
+                onClick={() => setShowLoginModal(false)}
                 className="px-6 py-2 text-sm font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
               >
                 아니요
               </button>
-              <button 
-                onClick={handleLoginConfirm} 
+              <button
+                onClick={handleLoginConfirm}
                 className="px-6 py-2 text-sm font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700"
               >
                 예

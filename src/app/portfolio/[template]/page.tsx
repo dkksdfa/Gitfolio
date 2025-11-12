@@ -34,7 +34,8 @@ const PortfolioPage = () => {
 
   useEffect(() => {
     if (template) {
-      import(`@/templates/${template}.tsx`)
+      // Use relative import to ensure bundler can resolve the template files
+      import(`../../../templates/${template}.tsx`)
         .then(module => setTemplateComponent(() => module.default))
         .catch(() => {
           setError(`Template "${template}" not found.`);
@@ -79,7 +80,40 @@ const PortfolioPage = () => {
     return <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">Template not found.</div>;
   }
 
-  return <TemplateComponent user={user} repos={repos} />;
+  const handleDownload = () => {
+    try {
+      const el = document.getElementById('portfolio-root');
+      if (!el) return;
+      const inner = el.innerHTML;
+      const full = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script src="https://cdn.tailwindcss.com"></script><title>${template} - portfolio</title></head><body>${inner}</body></html>`;
+      const blob = new Blob([full], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${template}-portfolio.html`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Download failed', e);
+      alert('다운로드에 실패했습니다.');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto p-6 flex justify-between items-center">
+        <h1 className="text-2xl font-bold">포트폴리오 미리보기</h1>
+        <div className="space-x-2">
+          <button onClick={handleDownload} className="px-3 py-2 bg-indigo-600 text-white rounded">포트폴리오 다운로드</button>
+        </div>
+      </div>
+      <div id="portfolio-root">
+        <TemplateComponent user={user} repos={repos} />
+      </div>
+    </div>
+  );
 };
 
 export default PortfolioPage;

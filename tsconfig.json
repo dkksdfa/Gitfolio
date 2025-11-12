@@ -1,8 +1,12 @@
 {
   "compilerOptions": {
+    "target": "es2015",
+    "downlevelIteration": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": [
+        "src/*"
+      ]
     },
     "lib": [
       "dom",
