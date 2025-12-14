@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { allTemplates } from '@/lib/templates';
 import { Template } from '@/types/template';
@@ -18,19 +19,24 @@ const PortfolioForm = () => {
     const [phone, setPhone] = useState('');
     const [resumeUrl, setResumeUrl] = useState('');
     const [github, setGithub] = useState('');
+    const [blogUrl, setBlogUrl] = useState('');
     const [location, setLocation] = useState('');
 
     const [skills, setSkills] = useState<string[]>([]);
     const [skillInput, setSkillInput] = useState('');
+    const [skillCategory, setSkillCategory] = useState(''); // Default to no category
 
     const [projects, setProjects] = useState<Project[]>([]);
     const [careers, setCareers] = useState<Career[]>([]);
+    const [blogPosts, setBlogPosts] = useState<{ id: number; title: string; date: string; url: string; }[]>([]);
     const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
     const [templateMeta, setTemplateMeta] = useState<Template | null>(null);
     const [isLoading, setIsLoading] = useState(true); // 로딩 상태 추가
     const [isImporting, setIsImporting] = useState(false); // GitHub 가져오기 로딩 상태
     const [generatingIndex, setGeneratingIndex] = useState<number | null>(null);
     const [genError, setGenError] = useState<string | null>(null);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+    const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
     useEffect(() => {
         const savedTemplate = localStorage.getItem('selected_template');
@@ -54,10 +60,12 @@ const PortfolioForm = () => {
                     setPhone(p.phone || '');
                     setResumeUrl(p.resumeUrl || '');
                     setGithub(p.github || '');
+                    setBlogUrl(p.blogUrl || '');
                     setLocation(p.location || '');
                     setSkills(p.skills || []);
                     setProjects(p.projects || []);
                     setCareers(p.careers || []);
+                    setBlogPosts(p.blogPosts || []);
                 }
             } catch (e) {
                 // If server fetch fails (e.g., 404), fallback to localStorage
@@ -70,6 +78,7 @@ const PortfolioForm = () => {
                         setEmail(prev => prev || p.email || '');
                         setPhone(prev => prev || p.phone || '');
                         setGithub(prev => prev || p.github || '');
+                        setBlogUrl(prev => prev || p.blogUrl || '');
                         setLocation(prev => prev || p.location || '');
                     }
 
@@ -83,10 +92,12 @@ const PortfolioForm = () => {
                         setPhone(obj.phone || '');
                         setResumeUrl(obj.resumeUrl || '');
                         setGithub(obj.github || '');
+                        setBlogUrl(obj.blogUrl || '');
                         setLocation(obj.location || '');
                         setSkills(obj.skills || []);
                         setProjects(obj.projects || []);
                         setCareers(obj.careers || []);
+                        setBlogPosts(obj.blogPosts || []);
                     }
                 } catch (localError) {
                     console.error("Failed to parse from localStorage", localError);
@@ -110,19 +121,101 @@ const PortfolioForm = () => {
     }, []);
 
     const save = async () => {
-        const payload = { name, title, intro, email, phone, resumeUrl, github, location, skills, projects, careers };
+        const payload = { name, title, intro, email, phone, resumeUrl, github, blogUrl, location, skills, projects, careers, blogPosts };
+        setSaveStatus('saving');
+        setSaveMessage('저장 중...');
         try {
             await axios.post('/api/user/profile', payload);
-            alert('프로필이 서버에 저장되었습니다.');
+            setSaveStatus('success');
+            setSaveMessage('서버에 저장되었습니다. 미리보기로 이동합니다.');
         } catch (e) {
             console.error('Failed to save profile to server', e);
-            alert('서버 저장에 실패했습니다. 로컬에만 저장됩니다.');
+            setSaveStatus('error');
+            setSaveMessage('서버 저장에 실패했습니다. 데이터는 로컬에만 저장됩니다.');
         }
 
         // Also save to local storage as a backup/for offline
         localStorage.setItem('portfolio_profile', JSON.stringify(payload));
-        const personal = { name, email, phone, github, location };
+        const personal = { name, email, phone, github, blogUrl, location };
         localStorage.setItem('portfolio_personal', JSON.stringify(personal));
+        // Also prepare portable keys used by the preview/download page
+        try {
+            const userForPreview = {
+                login: github ? (parseGithubUrl(github)?.owner || name) : name,
+                name: name,
+                avatar_url: '',
+                html_url: github || '',
+                blog: blogUrl,
+                blogPosts: blogPosts
+            };
+            const reposForPreview = projects.map(p => ({
+                id: p.id,
+                name: p.name,
+                html_url: p.url || (p as any).html_url || '',
+                description: p.description || '',
+                period: (p as any).period || '',
+                summary: (p as any).summary || '',
+                techs: (p as any).techs || [],
+                stargazers_count: (p as any).stargazers_count || 0,
+                contributor_count: 0,
+                languages: (p as any).languages || {},
+                created_at: (p as any).created_at || '',
+                updated_at: (p as any).updated_at || new Date().toISOString()
+            }));
+            localStorage.setItem('portfolio_user', JSON.stringify(userForPreview));
+            localStorage.setItem('portfolio_repos', JSON.stringify(reposForPreview));
+        } catch (e) {
+            console.warn('Failed to write preview data to localStorage', e);
+        }
+        // 자동 리다이렉트: 저장 후 선택된 템플릿이 있으면 미리보기로 이동
+        try {
+            if (selectedTemplate) {
+                // give user a brief moment to see success message
+                setTimeout(() => router.push(`/portfolio/${selectedTemplate}`), 600);
+            }
+        } catch (e) {
+            console.warn('Redirect to preview failed', e);
+        }
+    };
+
+    const router = useRouter();
+
+    const preview = () => {
+        if (!selectedTemplate) {
+            alert('템플릿을 선택해주세요.');
+            return;
+        }
+        try {
+            const userForPreview = {
+                login: github ? (parseGithubUrl(github)?.owner || name) : name,
+                name: name,
+                avatar_url: '',
+                html_url: github || '',
+                blog: blogUrl,
+                blogPosts: blogPosts
+            };
+            const reposForPreview = projects.map(p => ({
+                id: p.id,
+                name: p.name,
+                html_url: p.url || (p as any).html_url || '',
+                description: p.description || '',
+                period: (p as any).period || '',
+                summary: (p as any).summary || '',
+                techs: (p as any).techs || [],
+                stargazers_count: (p as any).stargazers_count || 0,
+                contributor_count: 0,
+                languages: (p as any).languages || {},
+                created_at: (p as any).created_at || '',
+                updated_at: (p as any).updated_at || new Date().toISOString()
+            }));
+            localStorage.setItem('portfolio_user', JSON.stringify(userForPreview));
+            localStorage.setItem('portfolio_repos', JSON.stringify(reposForPreview));
+            // navigate to preview page
+            router.push(`/portfolio/${selectedTemplate}`);
+        } catch (e) {
+            console.error('Preview failed', e);
+            alert('미리보기를 생성하지 못했습니다. 콘솔을 확인하세요.');
+        }
     };
 
     const reset = () => {
@@ -138,7 +231,9 @@ const PortfolioForm = () => {
     const addSkill = () => {
         const v = skillInput.trim();
         if (!v) return;
-        if (!skills.includes(v)) setSkills(prev => [...prev, v]);
+        // Only add prefix if a category is selected
+        const skillString = skillCategory ? `${skillCategory}:${v}` : v;
+        if (!skills.includes(skillString)) setSkills(prev => [...prev, skillString]);
         setSkillInput('');
     };
 
@@ -149,12 +244,33 @@ const PortfolioForm = () => {
         try {
             const response = await axios.get('/api/github/all-repos');
             const repos = response.data;
-            setProjects(repos.map((repo: any) => ({
-                id: repo.id,
-                name: repo.name,
-                url: repo.html_url,
-                description: repo.description || '',
-            })));
+            setProjects(repos.map((repo: any) => {
+                // Format period from created_at and updated_at
+                let period = '';
+                if (repo.created_at) {
+                    const start = new Date(repo.created_at);
+                    const startStr = `${start.getFullYear()}.${String(start.getMonth() + 1).padStart(2, '0')}`;
+                    if (repo.updated_at) {
+                        const end = new Date(repo.updated_at);
+                        const endStr = `${end.getFullYear()}.${String(end.getMonth() + 1).padStart(2, '0')}`;
+                        period = `${startStr} - ${endStr}`;
+                    } else {
+                        period = `${startStr} - 진행중`;
+                    }
+                }
+
+                return {
+                    id: repo.id,
+                    name: repo.name,
+                    url: repo.html_url,
+                    description: repo.description || '',
+                    stargazers_count: repo.stargazers_count,
+                    languages: repo.languages,
+                    created_at: repo.created_at,
+                    updated_at: repo.updated_at,
+                    period: period, // Set the formatted period
+                };
+            }));
         } catch (error) {
             console.error("Failed to import from GitHub", error);
             alert("GitHub에서 프로젝트를 가져오는 데 실패했습니다.");
@@ -165,7 +281,7 @@ const PortfolioForm = () => {
 
     const addProject = () => {
         const id = Date.now();
-        setProjects(prev => [...prev, { id, name: '새 프로젝트', description: '', url: '' }]);
+        setProjects(prev => [...prev, { id, name: '새 프로젝트', description: '', url: '', period: '', summary: '', techs: [] }]);
     };
 
     const updateProject = (id: string | number, field: keyof Project, value: any) => {
@@ -219,18 +335,49 @@ const PortfolioForm = () => {
         try {
             const body = { owner: parsed.owner, repo: parsed.repo, title: project.name || '', description: project.description || '' };
             const res = await axios.post('/api/ai/summarize', body);
-            const summary = res.data?.summary;
-            if (summary) {
-                const newProjects = projects.map((p, i) => i === index ? { ...p, description: summary } : p);
-                setProjects(newProjects);
-                // update local storage backup
-                try {
-                    const prev = JSON.parse(localStorage.getItem('portfolio_profile') || '{}');
-                    const merged = { ...prev, projects: newProjects };
-                    localStorage.setItem('portfolio_profile', JSON.stringify(merged));
-                } catch (e) {
-                    // ignore localStorage write errors
-                }
+            const data = res.data;
+
+            if (data) {
+                // Use functional update to ensure we are working with the latest state
+                setProjects(currentProjects => {
+                    // Check if the project still exists (it might have been deleted)
+                    const targetExists = currentProjects.some(p => p.id === project.id);
+                    if (!targetExists) return currentProjects;
+
+                    const newProjects = currentProjects.map(p => p.id === project.id ? {
+                        ...p,
+                        description: data.description || p.description,
+                        summary: data.summary || p.summary,
+                        techs: (data.techs && Array.isArray(data.techs)) ? data.techs : p.techs,
+                        period: data.period || p.period
+                    } : p);
+
+                    // update local storage backup inside the callback to ensure consistency
+                    try {
+                        const prev = JSON.parse(localStorage.getItem('portfolio_profile') || '{}');
+                        const merged = { ...prev, projects: newProjects };
+                        localStorage.setItem('portfolio_profile', JSON.stringify(merged));
+
+                        const reposForPreview = newProjects.map(p => ({
+                            id: p.id,
+                            name: p.name,
+                            html_url: (p as any).url || (p as any).html_url || '',
+                            description: p.description || '',
+                            period: (p as any).period || '',
+                            summary: (p as any).summary || '',
+                            techs: (p as any).techs || [],
+                            stargazers_count: (p as any).stargazers_count || 0,
+                            contributor_count: 0,
+                            languages: {},
+                            updated_at: new Date().toISOString()
+                        }));
+                        localStorage.setItem('portfolio_repos', JSON.stringify(reposForPreview));
+                    } catch (e) {
+                        // ignore localStorage write errors
+                    }
+
+                    return newProjects;
+                });
             } else {
                 setGenError('요약을 생성하지 못했습니다.');
                 alert('요약을 생성하지 못했습니다.');
@@ -322,6 +469,10 @@ const PortfolioForm = () => {
                                 <Input value={github} onChange={(e) => setGithub(e.target.value)} />
                             </div>
                             <div>
+                                <label className="block text-sm text-gray-600">블로그 URL</label>
+                                <Input value={blogUrl} onChange={(e) => setBlogUrl(e.target.value)} placeholder="https://blog.example.com" />
+                            </div>
+                            <div>
                                 <label className="block text-sm text-gray-600">위치</label>
                                 <Input value={location} onChange={(e) => setLocation(e.target.value)} />
                             </div>
@@ -336,16 +487,36 @@ const PortfolioForm = () => {
                     <CardContent className="pt-6">
                         <h3 className="text-lg font-semibold">기술 스택</h3>
                         <div className="flex items-center gap-2 mt-2">
+                            {!!templateMeta?.usesSkillCategories && (
+                                <select
+                                    className="border rounded-md p-2 text-sm min-w-[100px]"
+                                    value={skillCategory}
+                                    onChange={(e) => setSkillCategory(e.target.value)}
+                                >
+                                    <option value="">분류 없음</option>
+                                    <option value="Language">Language</option>
+                                    <option value="Frontend">Frontend</option>
+                                    <option value="Backend">Backend</option>
+                                    <option value="DevOps">DevOps</option>
+                                    <option value="Tools">Tools</option>
+                                    <option value="Etc">Etc</option>
+                                </select>
+                            )}
                             <Input value={skillInput} onChange={(e) => setSkillInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())} placeholder="기술 스택을 입력하고 Enter를 누르세요" />
                             <Button onClick={addSkill}>추가</Button>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-2">
-                            {skills.map(s => (
-                                <span key={s} className="bg-gray-100 px-2 py-1 rounded flex items-center gap-2">
-                                    <span className="text-sm">{s}</span>
-                                    <Button variant="ghost" size="sm" onClick={() => removeSkill(s)} className="text-xs text-red-500 h-auto p-0">x</Button>
-                                </span>
-                            ))}
+                            {skills.map(s => {
+                                const isCategorized = s.includes(':');
+                                const [cat, name] = isCategorized ? s.split(':') : ['', s];
+                                return (
+                                    <span key={s} className="bg-gray-100 px-2 py-1 rounded flex items-center gap-2 border border-gray-200">
+                                        {isCategorized && <span className="text-xs font-bold text-gray-500 mr-1">[{cat}]</span>}
+                                        <span className="text-sm">{name}</span>
+                                        <Button variant="ghost" size="sm" onClick={() => removeSkill(s)} className="text-xs text-red-500 h-auto p-0 ml-1">x</Button>
+                                    </span>
+                                );
+                            })}
                         </div>
                     </CardContent>
                 </Card>
@@ -368,15 +539,24 @@ const PortfolioForm = () => {
                                         <div className="flex-1 space-y-2">
                                             <Input value={p.name} onChange={(e) => updateProject(p.id, 'name', e.target.value)} placeholder="프로젝트 이름" />
                                             <Input value={p.url || ''} onChange={(e) => updateProject(p.id, 'url', e.target.value)} placeholder="프로젝트 URL" />
+                                            <Input value={p.period || ''} onChange={(e) => updateProject(p.id, 'period', e.target.value)} placeholder="기간 (예: 2020.01 - 2021.03)" />
                                         </div>
                                         <div className="flex flex-col gap-2">
-                                            <Button onClick={() => generateProjectDescription(idx)} disabled={generatingIndex === idx}>
+                                            <Button onClick={() => generateProjectDescription(idx)} disabled={generatingIndex !== null}>
                                                 {generatingIndex === idx ? '생성 중...' : '설명 생성'}
                                             </Button>
-                                            <Button onClick={() => removeProject(p.id)} variant="destructive">삭제</Button>
+                                            <Button onClick={() => removeProject(p.id)} variant="destructive" disabled={generatingIndex === idx}>삭제</Button>
                                         </div>
                                     </div>
                                     <Textarea value={p.description} onChange={(e) => updateProject(p.id, 'description', e.target.value)} className="mt-2" placeholder="프로젝트 설명" rows={3} />
+                                    <Textarea value={p.summary || ''} onChange={(e) => updateProject(p.id, 'summary', e.target.value)} className="mt-2" placeholder="프로젝트에서 수행한 주요 작업이나 성과를 리스트 형태로 입력해주세요." rows={3} />
+                                    <div className="mt-2">
+                                        <label className="block text-sm text-gray-600">기술 스택 (쉼표로 구분)</label>
+                                        <Input value={(p.techs || []).join(', ')} onChange={(e) => {
+                                            const arr = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                                            updateProject(p.id, 'techs', arr);
+                                        }} placeholder="React, TypeScript, Node.js" />
+                                    </div>
                                     {genError && <p className="text-sm text-red-500 mt-2">{genError}</p>}
                                 </Card>
                             ))}
@@ -387,7 +567,7 @@ const PortfolioForm = () => {
 
 
             {isFieldVisible('experiences') && (
-                <Card>
+                <Card className="mb-6">
                     <CardContent className="pt-6">
                         <h3 className="text-lg font-semibold">경력</h3>
                         <div className="flex gap-2 mt-2 mb-4">
@@ -411,10 +591,76 @@ const PortfolioForm = () => {
                 </Card>
             )}
 
-
-            <div className="mt-6 flex gap-2 justify-end">
+            {isFieldVisible('blogPosts') && (
+                <Card className="mb-6">
+                    <CardContent className="pt-6">
+                        <h3 className="text-lg font-semibold">블로그 포스트</h3>
+                        <p className="text-sm text-gray-500 mb-4">메건 매직 템플릿 등에서 사용됩니다.</p>
+                        <div className="flex gap-2 mt-2 mb-4">
+                            <Button onClick={() => setBlogPosts([...blogPosts, { id: Date.now(), title: '', date: '', url: '' }])} variant="secondary">포스트 추가</Button>
+                        </div>
+                        <div className="space-y-4">
+                            {blogPosts.map((post, idx) => (
+                                <Card key={post.id} className="p-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="md:col-span-2">
+                                            <Input
+                                                value={post.title}
+                                                onChange={(e) => {
+                                                    const newPosts = [...blogPosts];
+                                                    newPosts[idx].title = e.target.value;
+                                                    setBlogPosts(newPosts);
+                                                }}
+                                                placeholder="포스트 제목"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Input
+                                                value={post.date}
+                                                onChange={(e) => {
+                                                    const newPosts = [...blogPosts];
+                                                    newPosts[idx].date = e.target.value;
+                                                    setBlogPosts(newPosts);
+                                                }}
+                                                placeholder="날짜 (예: 2024.01.01)"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-3">
+                                            <Input
+                                                value={post.url}
+                                                onChange={(e) => {
+                                                    const newPosts = [...blogPosts];
+                                                    newPosts[idx].url = e.target.value;
+                                                    setBlogPosts(newPosts);
+                                                }}
+                                                placeholder="포스트 URL"
+                                            />
+                                        </div>
+                                    </div>
+                                    <Button
+                                        onClick={() => setBlogPosts(blogPosts.filter(p => p.id !== post.id))}
+                                        variant="destructive"
+                                        className="mt-2"
+                                    >
+                                        삭제
+                                    </Button>
+                                </Card>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+            <div className="mt-6 flex gap-2 justify-end items-center">
+                <div className="flex-1">
+                    {saveMessage && (
+                        <div className={`text-sm px-3 py-2 rounded ${saveStatus === 'success' ? 'bg-green-50 text-green-700' : saveStatus === 'error' ? 'bg-red-50 text-red-700' : 'bg-gray-100 text-gray-800'}`}>
+                            {saveMessage}
+                        </div>
+                    )}
+                </div>
                 <Button onClick={reset} variant="outline">초기화</Button>
-                <Button onClick={save}>저장</Button>
+                <Button onClick={preview} variant="secondary">미리보기</Button>
+                <Button onClick={save} disabled={saveStatus === 'saving'}>{saveStatus === 'saving' ? '저장 중...' : '저장'}</Button>
             </div>
         </div>
     );

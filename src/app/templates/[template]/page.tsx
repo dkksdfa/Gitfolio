@@ -1,79 +1,62 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
+
+const TEMPLATES: Record<string, any> = {
+  cdg: dynamic(() => import('../../../templates/cdg')),
+  meganmagic: dynamic(() => import('../../../templates/meganmagic')),
+  modern: dynamic(() => import('../../../templates/modern')),
+  aurora: dynamic(() => import('../../../templates/aurora')),
+};
 
 export default function TemplatePreviewPage() {
   const params = useParams();
   const router = useRouter();
   const template = params.template as string;
 
-  const [TemplateComponent, setTemplateComponent] = useState<any>(null);
+  const TemplateComponent = TEMPLATES[template];
   const [error, setError] = useState<string | null>(null);
-  const previewRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!template) return;
-    // Dynamic import relative to this file
-    import(`../../../templates/${template}.tsx`)
-      .then(mod => setTemplateComponent(() => mod.default))
-      .catch(() => setError('템플릿을 불러오지 못했습니다.'));
+    if (template && !TEMPLATES[template]) {
+      setError('존재하지 않는 템플릿입니다.');
+    }
   }, [template]);
 
-  // download removed per UX change request
-
-  // Load profile and projects from localStorage if available
-  const [userData, setUserData] = useState<any>({ login: 'example', name: 'Example User', avatar_url: '', html_url: '#' });
-  const [reposData, setReposData] = useState<any[]>([
-    { id: 1, name: 'demo-repo', description: 'Demo repo', html_url: '#', languages: { TS: 100 }, stargazers_count: 3, contributor_count: 1, updated_at: new Date().toISOString() },
-  ]);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('portfolio_profile');
-      if (raw) {
-        const obj = JSON.parse(raw);
-        setUserData({ login: obj.github || 'example', name: obj.name || obj.title || 'Example User', avatar_url: '', html_url: obj.github || '#' });
-        if (Array.isArray(obj.projects) && obj.projects.length > 0) {
-          const mapped = obj.projects.map((p: any, i: number) => ({ id: p.id ?? `proj-${i}`, name: p.name || '', description: p.description || '', html_url: p.url || '#', languages: {}, stargazers_count: 0, contributor_count: 0, updated_at: new Date().toISOString() }));
-          setReposData(mapped);
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, []);
-
   return (
-    <div className="min-h-screen w-full bg-gray-50">
-      <div className="flex items-center justify-between p-6 max-w-7xl mx-auto">
-        <h1 className="text-2xl font-bold">템플릿 미리보기</h1>
-        <div className="space-x-2">
-          <button onClick={() => router.back()} className="px-3 py-2 border rounded">뒤로</button>
-          <button
-            onClick={() => {
-              try {
-                localStorage.setItem('selected_template', template);
-              } catch (e) { }
-              router.push('/analysis');
-            }}
-            className="px-3 py-2 bg-green-600 text-white rounded"
-          >
-            이 템플릿 선택
-          </button>
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Floating Action Buttons */}
+      <div className="fixed top-6 right-6 z-[100] flex gap-3">
+        <button
+          onClick={() => router.back()}
+          className="px-5 py-2.5 bg-white/90 backdrop-blur-md text-gray-700 font-bold rounded-full shadow-lg hover:bg-white hover:scale-105 transition-all border border-gray-200 text-sm"
+        >
+          뒤로
+        </button>
+        <button
+          onClick={() => {
+            try {
+              localStorage.setItem('selected_template', template);
+            } catch (e) { }
+            router.push('/analysis');
+          }}
+          className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-full shadow-lg hover:bg-indigo-700 hover:scale-105 transition-all text-sm"
+        >
+          이 템플릿 선택
+        </button>
       </div>
 
-      {error && <div className="text-red-500 max-w-7xl mx-auto px-6">{error}</div>}
+      {error && <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-[100] bg-red-100 text-red-500 px-6 py-3 rounded-full shadow-lg">{error}</div>}
 
-      <div ref={previewRef} className="w-full min-h-[80vh] bg-white">
+      <div className="w-full min-h-screen bg-white">
         {TemplateComponent ? (
-          // Render the template component in preview mode - full width
-          <div className="w-full h-full">
-            <TemplateComponent user={userData} repos={reposData} />
-          </div>
+          <TemplateComponent user={null} repos={null} />
         ) : (
-          <div className="text-center text-gray-500 py-12">템플릿을 불러오는 중...</div>
+          <div className="flex items-center justify-center min-h-screen text-gray-500">
+            {error ? '템플릿을 불러올 수 없습니다.' : '템플릿을 불러오는 중...'}
+          </div>
         )}
       </div>
     </div>

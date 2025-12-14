@@ -13,6 +13,8 @@ interface Repo {
   contributor_count?: number;
   languages?: Record<string, number>;
   updated_at?: string;
+  created_at?: string;
+  period?: string;
 }
 
 interface UserProfile {
@@ -25,11 +27,20 @@ interface UserProfile {
   location?: string;
   blog?: string;
   email?: string;
+  skills?: string[];
+  blogPosts?: { id: number; title: string; date: string; url: string; }[];
 }
 
 interface Props { user: UserProfile | null; repos: Repo[] | null }
 
 // --- START: Example Data based on meganmagic.com ---
+// Prefer local assets under `/public/templates/meganmagic` if available.
+const ASSET_BASE = '/templates/meganmagic';
+
+const defaultSkills = [
+  'Javascript', 'React.js', 'Next.js', 'typescript', 'Zustand', 'Styled-components', 'tailwind css', 'Antd', 'Chakra-UI', 'Jest', 'React-testing-library', 'Storybook', 'GraphQL', 'Tanstack-query', 'React-hook-form', 'Redux', 'Sass', 'Webpack', 'pnpm workspace', 'Vercel', 'AWS Amplify', 'Github', 'Vite', 'Figma',
+];
+
 const defaultProfile = {
   name: '송진경',
   bio: 'React를 중심으로 웹 프론트엔드를 개발합니다. 함께 제품을 만들고 성장시킬 곳을 찾고 있습니다.',
@@ -38,17 +49,15 @@ const defaultProfile = {
   githubUrl: 'https://github.com/MeganMagic',
   blogUrl: 'https://velog.io/@mari',
   resumeUrl: 'https://lh8zlkkhlslw0zyz.public.blob.vercel-storage.com/resume_20240815-KP7ogJVwF1jkbKglxaTbxv7NtrC7yw.pdf?download=1',
-  avatarUrl: 'https://www.meganmagic.com/_next/image?url=https%3A%2F%2Flh8zlkkhlslw0zyz.public.blob.vercel-storage.com%2Fprofile%2Fprofile-gSYjJvjYgI0uEaOa1oTqHjTEs1u5Lp.png&w=1920&q=75',
+  // Local-first avatar: place `profile.png` in `public/templates/meganmagic/profile.png` to override remote
+  avatarUrl: `${ASSET_BASE}/profile.png`,
+  skills: defaultSkills,
 };
 
 const defaultCareers = [
     { id: 1, company: '비상교육', role: '글로벌 Company, 소프트웨어개발 Cell', start: '2024', end: '현재', description: '온라인 교육 플랫폼 백오피스 개발 및 유지보수, 글로벌 서비스 FE 개발' },
     { id: 2, company: '코드스테이츠', role: 'Internal System Product팀, Frontend-Engineer', start: '2022', end: '2023', description: '수강생 관리 시스템(LMS) 개발 및 유지보수, 코드스테이츠 공식 홈페이지 리뉴얼 및 성능 최적화' },
     { id: 3, company: '스탠다드 로봇', role: '홈페이지 제작 외주', start: '2021.09', end: '2021.11', description: 'UI/UX 디자인 및 프론트엔드 개발' },
-];
-
-const defaultSkills = [
-  'Javascript', 'React.js', 'Next.js', 'typescript', 'Zustand', 'Styled-components', 'tailwind css', 'Antd', 'Chakra-UI', 'Jest', 'React-testing-library', 'Storybook', 'GraphQL', 'Tanstack-query', 'React-hook-form', 'Redux', 'Sass', 'Webpack', 'pnpm workspace', 'Vercel', 'AWS Amplify', 'Github', 'Vite', 'Figma',
 ];
 
 const defaultProjects: Omit<Repo, 'contributor_count' | 'updated_at'>[] = [
@@ -67,6 +76,16 @@ const defaultBlogPosts = [
 ];
 // --- END: Example Data ---
 
+const formatDate = (dateString?: string) => {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}`;
+  } catch (e) {
+    return '';
+  }
+};
 
 export default function MeganMagic({ user: propUser, repos: propRepos }: Props) {
   // Combine prop data with default data
@@ -76,6 +95,10 @@ export default function MeganMagic({ user: propUser, repos: propRepos }: Props) 
       const fromStorage = JSON.parse(localStorage.getItem('portfolio_profile') || '{}').careers;
       return (fromStorage && fromStorage.length > 0) ? fromStorage : defaultCareers;
   }, []);
+  const blogPosts = useMemo(() => {
+      if (user.blogPosts && user.blogPosts.length > 0) return user.blogPosts;
+      return defaultBlogPosts;
+  }, [user.blogPosts]);
 
 
   const [scrolled, setScrolled] = useState(false);
@@ -93,6 +116,12 @@ export default function MeganMagic({ user: propUser, repos: propRepos }: Props) 
   useEffect(() => {
     // This effect can be used for other client-side logic if needed.
   }, []);
+
+  // avatar src with fallback handling for missing local `profile.png`
+  const [avatarSrc, setAvatarSrc] = useState<string>(user.avatarUrl || defaultProfile.avatarUrl);
+  useEffect(() => {
+    setAvatarSrc(user.avatarUrl || defaultProfile.avatarUrl);
+  }, [user.avatarUrl]);
 
   const [active, setActive] = useState<string>('hero');
   useEffect(() => {
@@ -116,20 +145,8 @@ export default function MeganMagic({ user: propUser, repos: propRepos }: Props) 
   }, [repos]);
 
   const topLanguages = useMemo(() => {
-    if (!repos || repos.length === 0) return defaultSkills;
-    const aggregate: Record<string, number> = {};
-    repos.forEach(r => {
-      if (r.languages) {
-        Object.entries(r.languages).forEach(([lang, val]) => {
-          aggregate[lang] = (aggregate[lang] || 0) + (val as number || 0);
-        });
-      }
-    });
-    const languagesFromRepos = Object.keys(aggregate);
-    // Combine repo languages with default skills, remove duplicates, and take the first 20.
-    const combined = Array.from(new Set([...languagesFromRepos, ...defaultSkills]));
-    return combined.slice(0, 20);
-  }, [repos]);
+    return user.skills || [];
+  }, [user.skills]);
 
   const projectShowcase = useMemo(() => {
     if (!repos) return [];
@@ -163,6 +180,7 @@ export default function MeganMagic({ user: propUser, repos: propRepos }: Props) 
       <main>
         {/* HERO */}
         <section id="hero" className="relative py-28 md:py-40">
+          {/* Decorative shape SVGs removed */}
           <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
             <div className="flex-1">
               <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight text-mm-text mb-4">
@@ -200,9 +218,14 @@ export default function MeganMagic({ user: propUser, repos: propRepos }: Props) 
             </div>
             <div className="relative flex justify-center items-center">
               <div className="w-64 h-64 md:w-80 md:h-80 rounded-full overflow-hidden shadow-2xl border-8 border-white">
-                {user.avatarUrl ? (
+                {avatarSrc ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                  <img
+                    src={avatarSrc}
+                    alt={user.name}
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).src = `${ASSET_BASE}/image.png`; }}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
                     <span className="text-6xl font-bold text-gray-500">?</span>
@@ -259,7 +282,7 @@ export default function MeganMagic({ user: propUser, repos: propRepos }: Props) 
           <div className="max-w-7xl mx-auto px-6">
             <h2 className="text-3xl font-extrabold mb-12 text-center">주요 프로젝트</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {projectShowcase.map(repo => (
+              {projectShowcase.map((repo, idx) => (
                 <a
                   key={repo.id}
                   href={repo.html_url}
@@ -267,6 +290,15 @@ export default function MeganMagic({ user: propUser, repos: propRepos }: Props) 
                   rel="noopener noreferrer"
                   className="group block rounded-xl border border-mm-border bg-white shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
                 >
+                  {/* optional top image: if you place `feature1.png`, `feature2.png`, ... under `public/templates/meganmagic/` they will be used */}
+                  <div className="overflow-hidden rounded-t-xl">
+                    <img
+                      src={`${ASSET_BASE}/feature${repo.id}.png`}
+                      alt={repo.name}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).src = `${ASSET_BASE}/feature${(idx % 3) + 1}.png`; }}
+                      className="w-full h-40 object-cover bg-gray-100"
+                    />
+                  </div>
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-xl font-bold text-mm-text group-hover:text-mm-accent transition-colors">
@@ -279,7 +311,16 @@ export default function MeganMagic({ user: propUser, repos: propRepos }: Props) 
                         </span>
                       )}
                     </div>
-                    <p className="text-base text-mm-sub line-clamp-3 leading-relaxed">
+                    <div className="mb-2 text-xs text-mm-sub font-medium">
+                      {repo.period ? (
+                        <span>{repo.period}</span>
+                      ) : (repo.created_at && repo.updated_at ? (
+                        <span>{formatDate(repo.created_at)} - {formatDate(repo.updated_at)}</span>
+                      ) : (
+                        repo.updated_at && <span>~ {formatDate(repo.updated_at)}</span>
+                      ))}
+                    </div>
+                    <p className="text-base text-mm-sub line-clamp-3 leading-relaxed whitespace-pre-line">
                       {repo.description || '설명이 없습니다.'}
                     </p>
                     <div className="mt-5 flex flex-wrap gap-2">
@@ -314,7 +355,17 @@ export default function MeganMagic({ user: propUser, repos: propRepos }: Props) 
                       <h4 className="text-lg font-bold text-mm-accent">{r.name}</h4>
                       <div className="flex items-center gap-4 text-sm text-mm-sub">
                         {typeof r.stargazers_count === 'number' && <span className="flex items-center gap-1">★ {r.stargazers_count}</span>}
-                        {'updated_at' in r && r.updated_at && <span>{new Date(r.updated_at as string).toLocaleDateString()}</span>}
+                        {(r.period || r.created_at || r.updated_at) && (
+                          <span>
+                            {r.period ? r.period : (
+                              <>
+                                {r.created_at ? formatDate(r.created_at) : ''} 
+                                {r.created_at && r.updated_at ? ' - ' : ''} 
+                                {r.updated_at ? formatDate(r.updated_at) : ''}
+                              </>
+                            )}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <p className="text-sm text-mm-sub mt-2 whitespace-pre-line">{r.description || '설명이 없습니다.'}</p>
@@ -333,7 +384,7 @@ export default function MeganMagic({ user: propUser, repos: propRepos }: Props) 
                   <p className="text-lg text-mm-sub max-w-2xl mx-auto mb-8">자세한 문제해결 과정과 기술 기록은 블로그에서 확인할 수 있습니다.</p>
               </div>
               <div className="max-w-3xl mx-auto space-y-6">
-                  {defaultBlogPosts.map(post => (
+                  {blogPosts.map(post => (
                       <a key={post.id} href={post.url} target="_blank" rel="noopener noreferrer" className="block p-6 border border-mm-border rounded-lg hover:shadow-lg hover:border-mm-accent transition-all">
                           <p className="text-sm text-mm-sub">{post.date}</p>
                           <h4 className="text-lg font-bold text-mm-text mt-2 group-hover:text-mm-accent">{post.title}</h4>

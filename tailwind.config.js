@@ -11,7 +11,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-pretendard)', ...fontFamily.sans],
+        sans: ['var(--font-noto-sans-kr)', ...fontFamily.sans],
       },
       colors: {
         'mm-bg': '#F9FAFB',
@@ -20,6 +20,11 @@ module.exports = {
         'mm-accent': '#5865F2',
         'mm-accent-hover': '#4752C4',
         'mm-border': '#E5E7EB',
+        // CDG template specific colors
+        'cdg-yellow': '#f9c51d',
+        'cdg-dark': '#222222',
+        'cdg-muted': '#6c757d',
+        'cdg-black': '#000000',
       },
     },
   },

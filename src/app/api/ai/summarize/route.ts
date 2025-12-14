@@ -54,19 +54,28 @@ export async function POST(request: NextRequest) {
       params: commitParams,
     });
 
-    // --- 3. Fetch README (can run in parallel with commits) ---
+    // --- 3. Fetch README and Languages (can run in parallel with commits) ---
     const readmePromise = axios.get(`https://api.github.com/repos/${owner}/${repo}/readme`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
+    const languagesPromise = axios.get(`https://api.github.com/repos/${owner}/${repo}/languages`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
 
-    const [readmeResult, commitsResult] = await Promise.allSettled([
+    const [readmeResult, commitsResult, languagesResult] = await Promise.allSettled([
       readmePromise,
       commitsPromise,
+      languagesPromise,
     ]);
 
     let readmeContent = 'No README file found.';
     if (readmeResult.status === 'fulfilled' && readmeResult.value.data.content) {
       readmeContent = decodeBase64(readmeResult.value.data.content);
+    }
+
+    let languages = [];
+    if (languagesResult.status === 'fulfilled') {
+      languages = Object.keys(languagesResult.value.data);
     }
 
     let commitMessages: string[] = [];
@@ -81,41 +90,61 @@ export async function POST(request: NextRequest) {
     const modelId = process.env.GEMINI_MODEL || 'gemini-pro';
     const model = genAI.getGenerativeModel({ model: modelId });
 
-    const prompt = `Analyze the following GitHub project and generate a concise and professional project description in Korean.
+    const prompt = `Analyze the following GitHub project and generate a structured portfolio entry in Korean.
 
 Project Title: ${title}
 User's Description: ${description}
 Project Type: ${isTeamProject ? 'Team Project' : 'Personal Project'}
 My Role: ${isTeamProject ? `I was one of ${contributors.length} contributors.` : 'I was the sole developer.'}
+Languages Used: ${languages.join(', ')}
 My Commits (${commitCount}):
 ${commitMessages.slice(0, 15).join('\n')}
 
 README.md:
-${readmeContent}
+${readmeContent.slice(0, 3000)}
 
-Based on this information, please generate a new project description. The description should be:
-- Written in Korean.
-- 2-4 sentences long.
-- Professional and suitable for a portfolio.
-- Highlight key features and my contributions.
-- Start with a clear opening like "이 프로젝트는..." or a similar phrase.
-- Do not include any introductory text like "Here is the generated description:". Just provide the description itself.
-`;
+Based on this information, please generate a JSON object with the following fields:
+1. "description": A concise and professional project description (2-4 sentences, Korean).
+2. "summary": A bullet-point summary of key features and my contributions (use "- " for bullets, ensure each item is separated by a newline character, Korean).
+3. "techs": An array of technical stacks used (e.g., ["React", "TypeScript", "Tailwind CSS"]). Infer from README and Languages.
+4. "period": Estimated project period (e.g., "2023.01 - 2023.03"). Infer from commit dates or README. If unknown, leave empty.
 
+Output ONLY the JSON object. Do not include markdown formatting like \`\`\`json.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    // Clean up potential markdown code blocks if the model ignores instructions
+    const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    let parsedData;
     try {
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const summary = response.text();
-      return NextResponse.json({ summary });
-    } catch (genErr: any) {
-      console.error('Error generating summary:', genErr);
-      // Provide actionable message when the configured model isn't available
-      const message = genErr?.message || String(genErr) || 'Failed to generate summary';
-      return NextResponse.json({ error: 'Failed to generate summary', detail: message }, { status: 500 });
+      parsedData = JSON.parse(cleanedText);
+
+      // Post-process summary to ensure newlines
+      if (parsedData.summary && typeof parsedData.summary === 'string') {
+        if (parsedData.summary.includes('- ') && !parsedData.summary.includes('\n')) {
+          // Replace " - " with "\n- " if it seems to be an inline list
+          parsedData.summary = parsedData.summary.replace(/(\S)\s+-\s/g, '$1\n- ');
+        }
+      }
+    } catch (e) {
+      console.error("Failed to parse JSON from LLM", text);
+      // Fallback to simple text if JSON parsing fails
+      parsedData = {
+        description: text,
+        summary: '',
+        techs: languages,
+        period: ''
+      };
     }
+
+    return NextResponse.json(parsedData);
+
   } catch (error: any) {
-    console.error('Unexpected error in summarize route:', error);
-    const msg = error?.message || String(error);
-    return NextResponse.json({ error: 'Unexpected server error', detail: msg }, { status: 500 });
+    console.error('Error generating summary:', error.response?.data || error.message);
+    return new Response(JSON.stringify({ error: 'Failed to generate summary' }), { status: 500 });
   }
 }
+

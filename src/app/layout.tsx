@@ -1,10 +1,13 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Noto_Sans_KR } from 'next/font/google';
 import './globals.css';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
+import ClientLayout from '@/components/ClientLayout';
 
-const inter = Inter({ subsets: ['latin'] });
+const notoSansKr = Noto_Sans_KR({
+  subsets: ['latin'],
+  weight: ['100', '300', '400', '500', '700', '900'],
+  variable: '--font-noto-sans-kr',
+});
 
 export const metadata: Metadata = {
   title: 'Gitfolio - AI-Powered Portfolio Builder',
@@ -18,12 +21,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body className={`${inter.className} bg-white`}>
-        <div className="flex flex-col min-h-screen">
-          <Header />
-          <main className="flex-grow">{children}</main>
-          <Footer />
-        </div>
+      <body className={`${notoSansKr.className} ${notoSansKr.variable} bg-white`}>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

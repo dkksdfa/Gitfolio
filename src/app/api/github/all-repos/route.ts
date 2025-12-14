@@ -108,6 +108,16 @@ async function mapWithLimit<T, R>(items: T[], fn: (t: T) => Promise<R>, limit = 
 
 async function augmentRepoData(repos: any[], accessToken: string, login: string): Promise<any[]> {
     const augment = async (repo: any) => {
+        // If repo is missing created_at (e.g. from commit search), fetch full details
+        if (!repo.created_at && repo.url) {
+            try {
+                const fullRepoRes = await axios.get(repo.url, { headers: { Authorization: `Bearer ${accessToken}` } });
+                repo = { ...repo, ...fullRepoRes.data };
+            } catch (e) {
+                console.warn(`Failed to fetch full repo data for ${repo.full_name}`, e);
+            }
+        }
+
         const langKey = `lang:${repo.full_name}`;
         const contribKey = `contrib:${repo.full_name}`;
         const commitKey = `commit:${repo.full_name}`;

@@ -68,6 +68,13 @@ export interface Project {
     name: string;
     description: string;
     url?: string;
+    period?: string;
+    summary?: string;
+    techs?: string[];
+    stargazers_count?: number;
+    created_at?: string;
+    updated_at?: string;
+    languages?: Record<string, number>;
 }
 
 export interface Career {
