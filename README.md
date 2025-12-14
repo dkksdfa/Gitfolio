@@ -1,21 +1,97 @@
-# Gitfolio
+# Gitfolio (AI 포트폴리오 빌더)
 
-This is a project to generate a portfolio based on your GitHub account.
+Gitfolio는 개발자들이 자신의 GitHub 데이터를 기반으로 쉽고 빠르게 전문적인 포트폴리오를 생성할 수 있도록 돕는 웹 애플리케이션입니다. Google Gemini AI를 활용하여 프로젝트 설명을 자동으로 요약하고, 다양한 템플릿을 통해 개성 있는 포트폴리오를 만들 수 있습니다.
 
-## Getting Started
+## ✨ 주요 기능
 
-First, run the development server:
+*   **GitHub 연동**: GitHub 계정으로 로그인하여 레포지토리, 기여도, 프로필 정보를 자동으로 불러옵니다.
+*   **AI 프로젝트 요약**: Google Gemini AI를 사용하여 프로젝트의 README나 설명을 분석하고, 핵심 성과와 기술 스택을 포함한 전문적인 요약을 생성합니다.
+*   **다양한 템플릿 제공**: 사용자의 취향에 맞는 여러 가지 디자인 템플릿을 제공합니다.
+    *   **Aurora**: 부드러운 그라디언트와 현대적인 디자인
+    *   **CDG**: 깔끔하고 가독성 높은 리스트 형태의 디자인
+    *   **MeganMagic**: 독특하고 창의적인 레이아웃
+    *   **Modern**: 심플하고 세련된 표준 포트폴리오 스타일
+*   **커스터마이징**: 불러온 데이터 외에도 경력, 기술 스택, 블로그 포스트 등을 자유롭게 추가하고 수정할 수 있습니다.
+*   **실시간 미리보기**: 편집한 내용을 즉시 미리보기 화면에서 확인할 수 있습니다.
+*   **반응형 디자인**: 모바일과 데스크톱 환경 모두에 최적화된 UI를 제공합니다.
 
+## 🛠 기술 스택
+
+*   **Framework**: Next.js 14 (App Router)
+*   **Language**: TypeScript
+*   **Styling**: Tailwind CSS, Shadcn UI
+*   **AI**: Google Generative AI (Gemini Pro)
+*   **HTTP Client**: Axios
+*   **State Management**: React Hooks, LocalStorage
+*   **Deployment**: Vercel (권장)
+
+## 🚀 시작하기
+
+### 1. 프로젝트 클론
 ```bash
-npm run dev
-# or
-yarn dev
+git clone https://github.com/dkksdfa/Gitfolio.git
+cd Gitfolio
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. 의존성 설치
+```bash
+npm install
+# 또는
+yarn install
+```
 
-## Features
+### 3. 환경 변수 설정
+프로젝트 루트에 `.env.local` 파일을 생성하고 다음 변수들을 설정해주세요.
 
-- Fetches repository and contribution data from GitHub.
-- Generates a portfolio page.
-- Summarizes project using AI.
+```env
+# GitHub OAuth 설정 (GitHub Developer Settings에서 발급)
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+
+# Google Gemini API 설정 (AI 요약 기능용)
+GEMINI_API_KEY=your_gemini_api_key
+
+# 앱 URL (배포 시 해당 도메인으로 변경)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Redis 설정 (선택 사항, 캐싱용)
+REDIS_URL=your_redis_url
+```
+
+### 4. 개발 서버 실행
+```bash
+npm run dev
+# 또는
+yarn dev
+```
+브라우저에서 `http://localhost:3000`으로 접속하여 확인합니다.
+
+## 📂 프로젝트 구조
+
+```
+src/
+├── app/                 # Next.js App Router 페이지 및 API 라우트
+│   ├── api/             # 백엔드 API (Auth, AI, GitHub 등)
+│   ├── portfolio/       # 포트폴리오 생성 및 미리보기 페이지
+│   └── ...
+├── components/          # 재사용 가능한 UI 컴포넌트
+│   ├── ui/              # 버튼, 입력창 등 기본 UI 요소
+│   └── ...
+├── lib/                 # 유틸리티 함수 및 설정
+├── templates/           # 포트폴리오 템플릿 컴포넌트 (Aurora, Modern 등)
+└── types/               # TypeScript 타입 정의
+```
+
+## 📝 사용 방법
+
+1.  **로그인**: 메인 화면에서 GitHub 계정으로 로그인합니다.
+2.  **데이터 가져오기**: GitHub에서 내 레포지토리 정보를 불러옵니다.
+3.  **정보 편집**:
+    *   프로필 정보, 기술 스택, 경력 사항을 입력합니다.
+    *   프로젝트 목록에서 '설명 생성' 버튼을 눌러 AI가 작성해주는 요약을 확인하고 수정합니다.
+4.  **템플릿 선택**: 원하는 디자인의 템플릿을 선택합니다.
+5.  **미리보기 및 저장**: 완성된 포트폴리오를 미리보고 저장합니다.
+
+## 📄 라이선스
+
+이 프로젝트는 MIT 라이선스를 따릅니다.
