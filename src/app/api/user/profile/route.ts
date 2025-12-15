@@ -1,34 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { cacheGet, cacheSet } from '@/lib/cache';
-import fs from 'fs/promises';
-import path from 'path';
-
-
-const DATA_DIR = path.join(process.cwd(), 'data');
-const PROFILE_FILE = path.join(DATA_DIR, 'profiles.json');
-
-async function ensureDataDir() {
-    try {
-        await fs.mkdir(DATA_DIR, { recursive: true });
-    } catch (e) {
-        // ignore
-    }
-}
-
-async function readProfilesFile(): Promise<Record<string, any>> {
-    try {
-        const raw = await fs.readFile(PROFILE_FILE, 'utf8');
-        return JSON.parse(raw || '{}');
-    } catch (e) {
-        return {};
-    }
-}
-
-async function writeProfilesFile(obj: Record<string, any>) {
-    await ensureDataDir();
-    await fs.writeFile(PROFILE_FILE, JSON.stringify(obj, null, 2), 'utf8');
-}
+import { db } from '@/lib/firebase';
 
 async function getUserLogin(accessToken: string) {
     const res = await axios.get('https://api.github.com/user', { headers: { Authorization: `Bearer ${accessToken}` } });
@@ -38,7 +11,7 @@ async function getUserLogin(accessToken: string) {
 export async function GET(request: NextRequest) {
     const accessToken = request.cookies.get('access_token')?.value;
     if (!accessToken) return new Response('Unauthorized', { status: 401 });
-    const _start = Date.now();
+
     try {
         const login = await getUserLogin(accessToken);
         // Check cache first
@@ -46,10 +19,16 @@ export async function GET(request: NextRequest) {
         const cached = cacheGet(key);
         if (cached) return NextResponse.json(cached);
 
-        // Fallback to file storage
-        const profiles = await readProfilesFile();
-        const profile = profiles[login];
-        if (!profile) return new Response('Not found', { status: 404 });
+        // Fallback to Firebase Firestore
+        if (!db) {
+            console.warn('Firebase not initialized');
+            return new Response('Database not configured', { status: 404 });
+        }
+
+        const doc = await db.collection('profiles').doc(login).get();
+        if (!doc.exists) return new Response('Not found', { status: 404 });
+
+        const profile = doc.data();
         // warm cache
         cacheSet(key, profile, 1000 * 60 * 60 * 24 * 7);
         return NextResponse.json(profile);
@@ -62,15 +41,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     const accessToken = request.cookies.get('access_token')?.value;
     if (!accessToken) return new Response('Unauthorized', { status: 401 });
-    const _start = Date.now();
+
     try {
         const login = await getUserLogin(accessToken);
         const body = await request.json();
 
-        // persist to file-backed store
-        const profiles = await readProfilesFile();
-        profiles[login] = body;
-        await writeProfilesFile(profiles);
+        if (!db) {
+            console.warn('Firebase not initialized');
+            return new Response('Database not configured', { status: 503 });
+        }
+
+        // persist to Firestore
+        await db.collection('profiles').doc(login).set(body);
 
         // also cache
         const key = `profile:${login}`;
