@@ -129,7 +129,7 @@ export default function Aurora({ user: propUser, repos: propRepos }: Props) {
 
   // Merge props with defaults
   const profile = useMemo(() => {
-    const u = propUser || {};
+    const u = propUser || ({} as any);
     return {
       name: u.name || defaultProfile.name,
       role: u.title || defaultProfile.role,
