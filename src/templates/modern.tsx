@@ -148,7 +148,7 @@ const Navbar = ({ darkMode, toggleDarkMode }: { darkMode: boolean, toggleDarkMod
 };
 
 // 2. 히로 섹션 (소개)
-const Hero = () => (
+const Hero = ({ profile }: { profile: any }) => (
   <section id="about" className="min-h-screen flex items-center justify-center pt-16">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center">
       <div className="md:w-1/2 text-center md:text-left mb-10 md:mb-0">
@@ -156,12 +156,12 @@ const Hero = () => (
           Welcome to my portfolio
         </div>
         <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 dark:text-white mb-6 leading-tight">
-          Hi, I'm <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">{PROFILE.name}</span>
+          Hi, I'm <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">{profile.name}</span>
           <br />
           Building Digital Experiences.
         </h1>
         <p className="mt-4 text-xl text-slate-600 dark:text-slate-400 max-w-lg mx-auto md:mx-0 leading-relaxed">
-          {PROFILE.bio}
+          {profile.bio}
         </p>
         <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
           <a href="#projects" className="px-8 py-3 rounded-full bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition shadow-lg hover:shadow-indigo-500/30 flex items-center justify-center">
@@ -172,9 +172,9 @@ const Hero = () => (
           </a>
         </div>
         <div className="mt-12 flex justify-center md:justify-start space-x-6 text-slate-500 dark:text-slate-400">
-          <a href={PROFILE.github} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition"><Github size={24} /></a>
-          <a href={PROFILE.linkedin} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition"><Linkedin size={24} /></a>
-          <a href={`mailto:${PROFILE.email}`} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition"><Mail size={24} /></a>
+          <a href={profile.github} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition"><Github size={24} /></a>
+          <a href={profile.linkedin} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition"><Linkedin size={24} /></a>
+          <a href={`mailto:${profile.email}`} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition"><Mail size={24} /></a>
         </div>
       </div>
       
@@ -297,7 +297,7 @@ const Skills = ({ user }: { user?: any }) => {
 };
 
 // 4. 프로젝트 섹션
-const Projects = () => (
+const Projects = ({ projects }: { projects: any[] }) => (
   <section id="projects" className="py-20">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="text-center mb-16">
@@ -307,7 +307,7 @@ const Projects = () => (
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {PROJECTS.map((project) => (
+        {projects.map((project) => (
           <div key={project.id} className="group bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 flex flex-col h-full">
             {/* Project Image Placeholder */}
             <div className={`h-48 ${project.color} bg-opacity-20 dark:bg-opacity-10 flex items-center justify-center relative overflow-hidden`}>
@@ -321,7 +321,7 @@ const Projects = () => (
               </p>
               
               <div className="flex flex-wrap gap-2 mb-6 mt-auto">
-                {project.tags.map(tag => (
+                {project.tags.map((tag: string) => (
                   <span key={tag} className="px-2 py-1 text-xs font-semibold text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-900/30 rounded-md">
                     {tag}
                   </span>
@@ -345,7 +345,7 @@ const Projects = () => (
 );
 
 // 5. 컨택 섹션
-const Contact = () => (
+const Contact = ({ profile }: { profile: any }) => (
   <section id="contact" className="py-20 bg-slate-50 dark:bg-slate-900/50">
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
       <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">Get In Touch</h2>
@@ -355,15 +355,15 @@ const Contact = () => (
       
       <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-lg border border-slate-200 dark:border-slate-700">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <a href={`mailto:${PROFILE.email}`} className="flex flex-col items-center p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition group">
+          <a href={`mailto:${profile.email}`} className="flex flex-col items-center p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition group">
             <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Mail size={24} />
             </div>
             <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Email</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{PROFILE.email}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{profile.email}</p>
           </a>
           
-          <a href={PROFILE.linkedin} className="flex flex-col items-center p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition group">
+          <a href={profile.linkedin} className="flex flex-col items-center p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition group">
             <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Linkedin size={24} />
             </div>
@@ -371,7 +371,7 @@ const Contact = () => (
             <p className="text-sm text-slate-500 dark:text-slate-400">Connect with me</p>
           </a>
           
-          <a href={PROFILE.github} className="flex flex-col items-center p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition group">
+          <a href={profile.github} className="flex flex-col items-center p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl transition group">
             <div className="w-12 h-12 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Github size={24} />
             </div>
@@ -385,10 +385,10 @@ const Contact = () => (
 );
 
 // 6. 푸터
-const Footer = () => (
+const Footer = ({ profile }: { profile: any }) => (
   <footer className="py-8 border-t border-slate-200 dark:border-slate-800 text-center">
     <p className="text-slate-500 dark:text-slate-400 text-sm">
-      © 2025 {PROFILE.name}. All rights reserved. Built with Next.js & Tailwind CSS.
+      © 2025 {profile.name}. All rights reserved. Built with Next.js & Tailwind CSS.
     </p>
   </footer>
 );
@@ -398,8 +398,33 @@ const Footer = () => (
  * 메인 App 컴포넌트
  * --------------------------------------------------------------------------
  */
-export default function Modern({ user, repos }: { user: any, repos: any }) {
+export default function Modern({ user: propUser, repos: propRepos }: { user: any, repos: any }) {
   const [darkMode, setDarkMode] = useState(false);
+
+  const user = React.useMemo(() => ({
+    ...PROFILE,
+    ...propUser,
+    name: propUser?.name || PROFILE.name,
+    bio: propUser?.bio || PROFILE.bio,
+    email: propUser?.email || PROFILE.email,
+    github: propUser?.html_url || PROFILE.github,
+    linkedin: propUser?.blog || PROFILE.linkedin,
+  }), [propUser]);
+
+  const projects = React.useMemo(() => {
+    if (propRepos && propRepos.length > 0) {
+      return propRepos.map((repo: any, idx: number) => ({
+        id: repo.id,
+        title: repo.name,
+        description: repo.description || '',
+        tags: repo.languages ? Object.keys(repo.languages) : [],
+        link: repo.html_url,
+        github: repo.html_url,
+        color: ['bg-blue-500', 'bg-indigo-500', 'bg-emerald-500', 'bg-purple-500', 'bg-pink-500', 'bg-orange-500'][idx % 6]
+      }));
+    }
+    return PROJECTS;
+  }, [propRepos]);
 
   useEffect(() => {
     if (darkMode) {
@@ -416,12 +441,12 @@ export default function Modern({ user, repos }: { user: any, repos: any }) {
       <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition-colors duration-300">
         <Navbar darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
         <main>
-          <Hero />
-          <Skills />
-          <Projects />
-          <Contact />
+          <Hero profile={user} />
+          <Skills user={user} />
+          <Projects projects={projects} />
+          <Contact profile={user} />
         </main>
-        <Footer />
+        <Footer profile={user} />
       </div>
     </div>
   );

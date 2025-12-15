@@ -60,7 +60,7 @@ const defaultCareers = [
     { id: 3, company: '스탠다드 로봇', role: '홈페이지 제작 외주', start: '2021.09', end: '2021.11', description: 'UI/UX 디자인 및 프론트엔드 개발' },
 ];
 
-const defaultProjects: Omit<Repo, 'contributor_count' | 'updated_at'>[] = [
+const defaultProjects: Repo[] = [
     { id: 1, name: '티끌', description: '가계부 공유 플랫폼 개발 프로젝트', html_url: 'https://github.com/MeganMagic/tiggle', stargazers_count: 15, languages: { 'React.js': 1, 'typescript': 1, 'Vite': 1 } },
     { id: 2, name: '개인 포트폴리오', description: 'Next.js App router를 활용하여 제작한 포트폴리오 사이트', html_url: 'https://github.com/MeganMagic/portfolio-v2', stargazers_count: 12, languages: { 'Next.js': 1, 'typescript': 1, 'tailwind css': 1 } },
     { id: 3, name: '코드스테이츠 홈페이지', description: 'Next.js 기반 웹사이트 개발 및 유지보수, 성능 최적화', html_url: '#', stargazers_count: 8, languages: { 'Next.js': 1, 'React.js': 1, 'typescript': 1 } },
